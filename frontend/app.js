@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8000'; 
+const API_BASE = 'https://equiforensics-api.onrender.com';
 let dbClient = null;
 let currentUser = null;
 let currentTab = 'experts';
