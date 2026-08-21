@@ -1,0 +1,38 @@
+name: Daily Research Ingestion
+
+# Runs automatically at 02:00 AM UTC every day
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  
+  # Allows you to click a "Run Now" button in GitHub to test it
+  workflow_dispatch:
+
+jobs:
+  update-database:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Get the code from your repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Install Python on the GitHub cloud server
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 3. Install the libraries from the backend folder
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      # 4. Run the script from the scripts folder
+      - name: Run OpenAlex Ingestion Script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/ingest_openalex.py
