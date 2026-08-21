@@ -1,0 +1,23 @@
+/* Custom Sleek Scrollbar for the Results Section */
+.scrollable-container {
+    max-height: 65vh;
+    overflow-y: auto;
+}
+.scrollable-container::-webkit-scrollbar {
+    width: 6px;
+}
+.scrollable-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.scrollable-container::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+.scrollable-container::-webkit-scrollbar-thumb:hover {
+    background: #FACC15;
+}
+
+/* Modal utility */
+.modal-active {
+    display: flex !important;
+}

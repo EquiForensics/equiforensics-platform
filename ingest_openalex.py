@@ -8,12 +8,14 @@ from dotenv import load_dotenv
 # 1. Load secure credentials
 load_dotenv()
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+# Use the SERVICE_KEY for admin write privileges!
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") 
 
-if not SUPABASE_URL or not SUPABASE_KEY:
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     raise ValueError("Missing credentials in .env file.")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Initialize Supabase with the Admin Key
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 OPENALEX_API_URL = "https://api.openalex.org/works"
 
 def fetch_and_upload_papers(disciplines: list):
