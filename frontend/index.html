@@ -120,6 +120,17 @@
             <button onclick="handleSignup()" class="w-full bg-transparent text-efYellow border border-efYellow font-bold py-3 rounded-lg hover:bg-efYellow hover:text-black transition">Create Account</button>
             <p id="auth-message" class="text-center text-sm font-semibold mt-4 hidden"></p>
         </div>
+        <div class="mt-6 border-t border-gray-800 pt-4">
+    <p class="text-xs text-center text-efGray mb-3">Or continue with</p>
+    <div class="flex gap-3">
+        <button onclick="handleSocialLogin('google')" class="flex-1 bg-black text-white border border-gray-700 font-bold py-2.5 rounded-lg hover:bg-gray-900 transition text-sm flex items-center justify-center gap-2">
+            <span>Google</span>
+        </button>
+        <button onclick="handleSocialLogin('azure')" class="flex-1 bg-black text-white border border-gray-700 font-bold py-2.5 rounded-lg hover:bg-gray-900 transition text-sm flex items-center justify-center gap-2">
+            <span>Microsoft</span>
+        </button>
+    </div>
+</div>
     </div>
 
     <div id="video-modal" class="fixed inset-0 bg-black hidden flex-col z-50">

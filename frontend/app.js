@@ -368,4 +368,16 @@ function endConsultation() {
     document.getElementById('video-modal').classList.remove('modal-active');
 }
 
+async function handleSocialLogin(provider) {
+    const { error } = await dbClient.auth.signInWithOAuth({
+        provider: provider,
+        options: {
+            redirectTo: window.location.origin // Automatically redirects back to your live site
+        }
+    });
+    if (error) {
+        showAuthMsg(error.message, "text-red-500");
+    }
+}
+
 window.onload = initApp;
