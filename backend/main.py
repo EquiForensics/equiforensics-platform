@@ -1,17 +1,19 @@
 import os
 import uuid
+import io
 from typing import Optional
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from dotenv import load_dotenv
+from pypdf import PdfReader
 
 load_dotenv()
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-app = FastAPI(title="EquiForensics API", version="1.2.0")
+app = FastAPI(title="EquiForensics API", version="1.3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,7 +25,6 @@ app.add_middleware(
 
 @app.get("/config")
 def get_config():
-    """Provides public Supabase keys to the frontend dynamically."""
     return {"supabase_url": SUPABASE_URL, "supabase_key": SUPABASE_KEY}
 
 @app.get("/search-papers")
@@ -49,9 +50,7 @@ def search_labs(query: Optional[str] = None, iso_only: bool = False):
 
 @app.get("/search-experts")
 def search_experts():
-    """Searches the profiles table for available forensic experts."""
     try:
-        # Returns users who are marked as experts and are available
         response = supabase.table("profiles")\
             .select("id, full_name, city, specialties, hourly_rate, bio")\
             .eq("user_type", "forensic_expert")\
@@ -65,3 +64,20 @@ def search_experts():
 def create_consultation():
     room_code = f"EquiForensics-Secure-{uuid.uuid4().hex[:10]}"
     return {"status": "success", "room_url": f"https://meet.jit.si/{room_code}"}
+
+# NEW: PDF Extraction Endpoint
+@app.post("/extract-pdf-text")
+async def extract_pdf_text(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        pdf_reader = PdfReader(io.BytesIO(content))
+        
+        extracted_text = ""
+        for page in pdf_reader.pages:
+            text = page.extract_text()
+            if text:
+                extracted_text += text + "\n"
+        
+        return {"status": "success", "text": extracted_text.strip()}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
