@@ -177,8 +177,7 @@ async function runSearch(page = 1) {
 
     try {
         let endpoint = '';
-        if(currentTab === 'experts') {
-            // FIX: Removed scrollable-container
+       if(currentTab === 'experts') {
             grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
             endpoint = `/search-experts?location=${encodeURIComponent(location)}&page=${page}&page_size=12`;
         }
@@ -254,7 +253,6 @@ function renderExperts(experts) {
 }
 
 function renderPapers(papers, container) {
-    // FIX: Removed scrollable-container
     container.className = viewMode === 'card' 
         ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         : "flex flex-col gap-4";

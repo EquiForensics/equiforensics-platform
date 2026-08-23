@@ -20,7 +20,8 @@
     <link rel="stylesheet" href="styles.css">
     <script src="app.js" defer></script>
 </head>
-<body class="bg-efBlack text-gray-200 font-sans min-h-screen flex flex-col antialiased overflow-hidden">
+<!-- FIX 1: Removed overflow-hidden so the page scrolls naturally -->
+<body class="bg-efBlack text-gray-200 font-sans min-h-screen flex flex-col antialiased">
 
     <nav class="w-full border-b border-gray-800 bg-efBlack/90 backdrop-blur sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -40,7 +41,7 @@
         </p>
     </header>
 
-    <main class="w-full max-w-7xl mx-auto px-4 pb-10 flex-1 flex flex-col">
+    <main class="w-full max-w-7xl mx-auto px-4 pb-16 flex-1 flex flex-col">
         
         <div class="flex flex-wrap justify-center gap-2 mb-6 border-b border-gray-800 pb-4">
             <button id="tab-experts" onclick="switchTab('experts')" class="px-6 py-2.5 rounded-lg font-bold bg-efYellow text-black transition">Expert Network</button>
@@ -62,7 +63,6 @@
                     <option value="2010">Since 2010</option>
                 </select>
 
-                <!-- This is the missing button that caused the Javascript crash! -->
                 <button id="view-toggle-btn" onclick="toggleViewMode()" class="hidden bg-efDark text-efGray px-4 py-3.5 rounded-lg border border-gray-800 hover:text-white transition flex items-center gap-2" title="Switch View">
                     <span id="view-icon-text" class="text-sm font-bold">Grid</span>
                     <svg id="view-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
@@ -70,10 +70,11 @@
             </div>
         </div>
 
-        <div id="results-grid" class="scrollable-container pr-2"></div>
-        <div id="pagination-container" class="flex justify-center items-center gap-4 mt-4 hidden"></div>
+        <!-- FIX 2: Removed scrollable-container classes so grids expand to their full height -->
+        <div id="results-grid" class="w-full"></div>
+        <div id="pagination-container" class="flex justify-center items-center gap-4 mt-10 hidden"></div>
 
-        <div id="dashboard-section" class="hidden w-full max-w-4xl mx-auto scrollable-container pr-2">
+        <div id="dashboard-section" class="hidden w-full max-w-4xl mx-auto">
             <div class="bg-efDark p-8 rounded-xl border border-gray-800 mb-8">
                 <h2 class="text-2xl font-bold text-white mb-4">My Professional Profile</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
