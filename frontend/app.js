@@ -4,6 +4,7 @@ let currentUser = null;
 let currentTab = 'experts';
 let viewMode = 'card'; 
 let jitsiApi = null;
+let currentPage = 1;
 
 async function initApp() {
     try {
@@ -83,11 +84,12 @@ function toggleViewMode() {
         btnText.innerText = "Grid";
         icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>`;
     }
-    runSearch(); 
+    runSearch(currentPage); 
 }
 
 function switchTab(tab) {
     currentTab = tab;
+    currentPage = 1;
     ['experts', 'papers', 'labs', 'dashboard'].forEach(t => {
         const btn = document.getElementById(`tab-${t}`);
         if(!btn) return;
@@ -102,12 +104,13 @@ function switchTab(tab) {
     const viewToggle = document.getElementById('view-toggle-btn');
     const locationFilter = document.getElementById('filter-location');
     const searchInput = document.getElementById('search-input');
+    const pagination = document.getElementById('pagination-container');
 
-    // Reset inputs
     searchInput.value = "";
     locationFilter.value = "";
     yearFilter.value = "2000";
     grid.innerHTML = ""; 
+    pagination.classList.add('hidden');
     
     if (tab === 'dashboard') {
         searchSection.classList.add('hidden');
@@ -127,14 +130,14 @@ function switchTab(tab) {
             yearFilter.classList.add('hidden');
             viewToggle.classList.add('hidden');
             searchInput.placeholder = "Search expert name or bio...";
-            runSearch();
+            runSearch(1);
         } else if (tab === 'papers') {
             searchSection.classList.remove('hidden');
             locationFilter.classList.add('hidden');
             yearFilter.classList.remove('hidden');
             viewToggle.classList.remove('hidden');
             searchInput.placeholder = "Search methods, keywords, authors...";
-            runSearch(); 
+            runSearch(1); 
         } else if (tab === 'labs') {
             searchSection.classList.remove('hidden');
             locationFilter.classList.remove('hidden');
@@ -142,30 +145,34 @@ function switchTab(tab) {
             yearFilter.classList.add('hidden');
             viewToggle.classList.add('hidden');
             searchInput.placeholder = "Search lab name...";
-            runSearch(); 
+            runSearch(1); 
         }
     }
 }
 
-async function runSearch() {
+async function runSearch(page = 1) {
+    currentPage = page;
     const query = document.getElementById('search-input').value.trim() || "*";
     const location = document.getElementById('filter-location').value.trim();
     const grid = document.getElementById('results-grid');
+    const pagination = document.getElementById('pagination-container');
+    
     grid.innerHTML = `<p class="text-efYellow text-center py-8 animate-pulse">Querying global infrastructure...</p>`;
+    pagination.classList.add('hidden');
 
     try {
         let endpoint = '';
         if(currentTab === 'experts') {
             grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scrollable-container pr-2";
-            endpoint = `/search-experts?location=${encodeURIComponent(location)}`;
+            endpoint = `/search-experts?location=${encodeURIComponent(location)}&page=${page}&page_size=12`;
         }
         if(currentTab === 'labs') {
             grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scrollable-container pr-2";
-            endpoint = `/search-labs?query=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}`;
+            endpoint = `/search-labs?query=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}&page=${page}&page_size=12`;
         }
         if(currentTab === 'papers') {
             const minYear = document.getElementById('year-filter').value;
-            endpoint = `/search-papers?query=${encodeURIComponent(query)}&min_year=${minYear}`;
+            endpoint = `/search-papers?query=${encodeURIComponent(query)}&min_year=${minYear}&page=${page}&page_size=12`;
         }
 
         const res = await fetch(`${API_BASE}${endpoint}`);
@@ -181,9 +188,30 @@ async function runSearch() {
         if(currentTab === 'papers') renderPapers(data.results, grid);
         if(currentTab === 'labs') renderLabs(data.results);
 
+        // Render pagination buttons if we received results
+        renderPagination(data.results.length, 12);
+
     } catch(e) {
         grid.innerHTML = `<p class="text-red-400 text-center py-8">Failed to fetch data.</p>`;
     }
+}
+
+function renderPagination(resultsCount, pageSize) {
+    const pagination = document.getElementById('pagination-container');
+    pagination.classList.remove('hidden');
+    
+    const hasPrevious = currentPage > 1;
+    const hasNext = resultsCount === pageSize;
+
+    pagination.innerHTML = `
+        <button onclick="runSearch(${currentPage - 1})" ${!hasPrevious ? 'disabled class="opacity-40 cursor-not-allowed"' : ''} class="bg-efDark text-white px-4 py-2 rounded-lg border border-gray-800 hover:border-efYellow transition text-sm font-bold">
+            ← Previous
+        </button>
+        <span class="text-sm text-efGray">Page ${currentPage}</span>
+        <button onclick="runSearch(${currentPage + 1})" ${!hasNext ? 'disabled class="opacity-40 cursor-not-allowed"' : ''} class="bg-efDark text-white px-4 py-2 rounded-lg border border-gray-800 hover:border-efYellow transition text-sm font-bold">
+            Next →
+        </button>
+    `;
 }
 
 function renderExperts(experts) {
@@ -335,7 +363,7 @@ async function saveProfile() {
     const msg = document.getElementById('prof-msg');
     const { error } = await dbClient.from('profiles').update({
         full_name: document.getElementById('prof-name').value,
-        city: document.getElementById('prof-city'].value,
+        city: document.getElementById('prof-city').value,
         bio: document.getElementById('prof-bio').value,
         is_available: document.getElementById('prof-available').checked
     }).eq('id', currentUser.id);
