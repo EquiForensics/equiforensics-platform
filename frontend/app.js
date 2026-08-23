@@ -1,4 +1,5 @@
-const API_BASE = 'https://equiforensics-api.onrender.com';
+// NOTE: Make sure this URL matches your live Render.com backend URL!
+const API_BASE = 'https://equiforensics-api.onrender.com'; 
 let dbClient = null;
 let currentUser = null;
 let currentTab = 'experts';
@@ -277,6 +278,54 @@ async function loadDashboard() {
         renderPapers(paperObjects, grid);
     } else {
         grid.innerHTML = `<p class="text-efGray text-sm">You haven't saved any papers yet.</p>`;
+    }
+}
+
+// NEW: Upload to Storage & Extract Text
+async function uploadAndExtractPDF() {
+    const fileInput = document.getElementById('pdf-upload');
+    const msg = document.getElementById('pdf-msg');
+    const btn = document.getElementById('pdf-btn');
+
+    if (!fileInput.files[0]) return alert("Please select a PDF first.");
+    const file = fileInput.files[0];
+
+    // UI Loading state
+    btn.innerText = "Processing...";
+    btn.disabled = true;
+    msg.classList.add('hidden');
+
+    try {
+        // 1. Upload to Supabase Storage 
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${currentUser.id}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        await dbClient.storage.from('resumes').upload(fileName, file, { upsert: true });
+
+        // 2. Extract Text via FastAPI Backend
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch(`${API_BASE}/extract-pdf-text`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            document.getElementById('prof-bio').value = data.text;
+            msg.innerText = "PDF uploaded & text extracted into bio!";
+            msg.className = "text-green-400 text-sm mt-3 block";
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (err) {
+        msg.innerText = "Error: " + err.message;
+        msg.className = "text-red-400 text-sm mt-3 block";
+    } finally {
+        btn.innerText = "Extract Text";
+        btn.disabled = false;
     }
 }
 
