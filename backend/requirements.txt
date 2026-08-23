@@ -6,3 +6,4 @@ requests
 pydantic
 pypdf
 python-multipart
+beautifulsoup4

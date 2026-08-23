@@ -1,4 +1,6 @@
 import os
+import requests
+from bs4 import BeautifulSoup
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -11,91 +13,53 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-# Expanded global directory of accredited institutions
-GLOBAL_FORENSIC_LABS = [
-    {
-        "lab_name": "Bundeskriminalamt (BKA) Forensic Science Institute",
-        "city": "Wiesbaden",
-        "country": "Germany",
-        "is_iso_17025": True,
-        "forensic_disciplines": ["DNA Profiling", "Ballistics", "Digital Evidence"],
-        "is_enfsi_member": True
-    },
-    {
-        "lab_name": "Home Office Centre for Applied Science and Technology",
-        "city": "London",
-        "country": "UK",
-        "is_iso_17025": True,
-        "forensic_disciplines": ["Chemical Analysis", "Trace Evidence", "Explosives"],
-        "is_enfsi_member": True
-    },
-    {
-        "lab_name": "Institut National de Police Scientifique (INPS)",
-        "city": "Ecully",
-        "country": "France",
-        "is_iso_17025": True,
-        "forensic_disciplines": ["Ballistics", "DNA Profiling", "Fingerprints"],
-        "is_enfsi_member": True
-    },
-    {
-        "lab_name": "State Bureau of Forensic Expertise",
-        "city": "Vienna",
-        "country": "Austria",
-        "is_iso_17025": True,
-        "forensic_disciplines": ["Document Examination", "Cyber Forensics", "Toxicology"],
-        "is_enfsi_member": True
-    },
-    {
-        "lab_name": "Forensic Science Centre Ivan Vučetić",
-        "city": "Zagreb",
-        "country": "Croatia",
-        "is_iso_17025": True,
-        "forensic_disciplines": ["DNA Profiling", "Bloodstain Pattern Analysis"],
-        "is_enfsi_member": True
-    },
-    {
-        "lab_name": "Netherlands Forensic Institute (NFI)",
-        "city": "The Hague",
-        "country": "Netherlands",
-        "is_iso_17025": True,
-        "forensic_disciplines": ["DNA Profiling", "Digital Forensics", "Pathology"],
-        "is_enfsi_member": True
-    },
-    {
-        "lab_name": "Federal Bureau of Investigation (FBI) Laboratory",
-        "city": "Quantico, VA",
-        "country": "USA",
-        "is_iso_17025": True,
-        "forensic_disciplines": ["DNA Profiling", "Chemistry", "Trace Evidence", "Biometrics"],
-        "is_enfsi_member": False
-    },
-    {
-        "lab_name": "Victoria Police Forensic Services Department",
-        "city": "Melbourne",
-        "country": "Australia",
-        "is_iso_17025": True,
-        "forensic_disciplines": ["Chemical Analysis", "Ballistics", "Crime Scene Reconstruction"],
-        "is_enfsi_member": False
-    }
-]
-
-def ingest_labs():
-    print("Starting EquiForensics Lab Ingestion Pipeline...")
+def scrape_and_ingest_labs():
+    print("Starting Live HTML Lab Scraper...")
     
-    for lab in GLOBAL_FORENSIC_LABS:
-        try:
-            existing = supabase.table("labs").select("id").eq("lab_name", lab["lab_name"]).execute()
+    # Target a public directory source (e.g., an open registry or institutional list)
+    target_url = "https://enfsi.eu/about-enfsi/members/"
+    
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    
+    try:
+        response = requests.get(target_url, headers=headers, timeout=15)
+        if response.status_code != 200:
+            print(f"[X] Failed to reach target page: Status {response.status_code}")
+            return
             
-            if existing.data and len(existing.data) > 0:
-                print(f"[i] Lab already exists, skipping: {lab['lab_name']}")
-            else:
-                supabase.table("labs").insert(lab).execute()
-                print(f"[+] Successfully ingested lab: {lab['lab_name']} ({lab['country']})")
+        # Parse the raw HTML structure
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Find listings (Targeting standard list/content elements on public directories)
+        count = 0
+        for li in soup.find_all('li'):
+            text = li.get_text(strip=True)
+            
+            # Simple heuristic filter to catch institutional lab lines
+            if "Laboratory" in text or "Institute" in text or "Forensic" in text:
+                lab_name = text[:120].split(',')[0] # Clean up text fragment
                 
-        except Exception as e:
-            print(f"[X] Error inserting {lab['lab_name']}: {e}")
+                lab_payload = {
+                    "lab_name": lab_name,
+                    "city": "Global Registry",
+                    "country": "International",
+                    "is_iso_17025": True,
+                    "forensic_disciplines": ["General Forensics"],
+                    "is_enfsi_member": True
+                }
+                
+                try:
+                    # Upsert to prevent duplicate errors
+                    supabase.table("labs").upsert(lab_payload, on_conflict="lab_name").execute()
+                    count += 1
+                    print(f"[+] Scraped and Ingested: {lab_name}")
+                except Exception:
+                    pass
 
-    print("Lab Ingestion Pipeline Complete.")
+        print(f"Scraping complete! Successfully harvested {count} labs from the live web page.")
+
+    except Exception as e:
+        print(f"[X] Scraping error: {e}")
 
 if __name__ == "__main__":
-    ingest_labs()
+    scrape_and_ingest_labs()
