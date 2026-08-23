@@ -18,6 +18,21 @@ async function initApp() {
     }
 }
 
+// Add this variable at the very top with your other variables
+let searchTimeout = null;
+
+// Add this function right below initApp()
+function onAutoSearch() {
+    // Clear the previous timer
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    // Set a new timer for 300ms
+    searchTimeout = setTimeout(() => {
+        runSearch(1);
+    }, 300);
+}
+
 async function checkSession() {
     if (!dbClient) return;
     const { data: { session } } = await dbClient.auth.getSession();

@@ -13,7 +13,7 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-app = FastAPI(title="EquiForensics API", version="1.5.0")
+app = FastAPI(title="EquiForensics API", version="1.7.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,9 +27,8 @@ app.add_middleware(
 def get_config():
     return {"supabase_url": SUPABASE_URL, "supabase_key": SUPABASE_KEY}
 
-# Papers Search with Pagination
 @app.get("/search-papers")
-def search_papers(query: str = Query("*"), min_year: int = 2000, page: int = 1, page_size: int = 12):
+def search_papers(query: str = Query("*"), min_year: int = 2000, page: int = 1, page_size: int = 6):
     try:
         start = (page - 1) * page_size
         end = start + page_size - 1
@@ -43,9 +42,8 @@ def search_papers(query: str = Query("*"), min_year: int = 2000, page: int = 1, 
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-# Labs Search with Pagination
 @app.get("/search-labs")
-def search_labs(query: Optional[str] = None, location: Optional[str] = None, page: int = 1, page_size: int = 12):
+def search_labs(query: Optional[str] = None, location: Optional[str] = None, page: int = 1, page_size: int = 6):
     try:
         start = (page - 1) * page_size
         end = start + page_size - 1
@@ -53,17 +51,18 @@ def search_labs(query: Optional[str] = None, location: Optional[str] = None, pag
         qb = supabase.table("labs").select("*", count="exact")
         if query and query != "*":
             qb = qb.ilike("lab_name", f"%{query}%")
+        
+        # FIX: Now searches BOTH city and country dynamically!
         if location and location != "":
-            qb = qb.ilike("city", f"%{location}%")
+            qb = qb.or_(f"city.ilike.%{location}%,country.ilike.%{location}%")
             
         response = qb.range(start, end).execute()
         return {"status": "success", "results": response.data, "page": page, "page_size": page_size}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-# Experts Search with Pagination
 @app.get("/search-experts")
-def search_experts(location: Optional[str] = None, page: int = 1, page_size: int = 12):
+def search_experts(location: Optional[str] = None, page: int = 1, page_size: int = 6):
     try:
         start = (page - 1) * page_size
         end = start + page_size - 1
@@ -91,13 +90,11 @@ async def extract_pdf_text(file: UploadFile = File(...)):
     try:
         content = await file.read()
         pdf_reader = PdfReader(io.BytesIO(content))
-        
         extracted_text = ""
         for page in pdf_reader.pages:
             text = page.extract_text()
             if text:
                 extracted_text += text + "\n"
-        
         return {"status": "success", "text": extracted_text.strip()}
     except Exception as e:
         return {"status": "error", "message": str(e)}
