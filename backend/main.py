@@ -13,7 +13,7 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-app = FastAPI(title="EquiForensics API", version="1.3.0")
+app = FastAPI(title="EquiForensics API", version="1.4.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,27 +35,37 @@ def search_papers(query: str = Query("*"), min_year: int = 2000):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+# UPDATED: Labs search with location & discipline filters
 @app.get("/search-labs")
-def search_labs(query: Optional[str] = None, iso_only: bool = False):
+def search_labs(query: Optional[str] = None, location: Optional[str] = None, discipline: Optional[str] = None):
     try:
         qb = supabase.table("labs").select("*")
-        if iso_only:
-            qb = qb.eq("is_iso_17025", True)
         if query and query != "*":
             qb = qb.ilike("lab_name", f"%{query}%")
+        if location and location != "":
+            qb = qb.ilike("city", f"%{location}%")
+        if discipline and discipline != "":
+            qb = qb.contains("forensic_disciplines", [discipline])
         response = qb.execute()
         return {"status": "success", "results": response.data}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+# UPDATED: Experts search with location & specialty filters
 @app.get("/search-experts")
-def search_experts():
+def search_experts(location: Optional[str] = None, specialty: Optional[str] = None):
     try:
-        response = supabase.table("profiles")\
+        qb = supabase.table("profiles")\
             .select("id, full_name, city, specialties, hourly_rate, bio")\
             .eq("user_type", "forensic_expert")\
-            .eq("is_available", True)\
-            .execute()
+            .eq("is_available", True)
+        
+        if location and location != "":
+            qb = qb.ilike("city", f"%{location}%")
+        if specialty and specialty != "":
+            qb = qb.contains("specialties", [specialty])
+            
+        response = qb.execute()
         return {"status": "success", "results": response.data}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -65,7 +75,6 @@ def create_consultation():
     room_code = f"EquiForensics-Secure-{uuid.uuid4().hex[:10]}"
     return {"status": "success", "room_url": f"https://meet.jit.si/{room_code}"}
 
-# NEW: PDF Extraction Endpoint
 @app.post("/extract-pdf-text")
 async def extract_pdf_text(file: UploadFile = File(...)):
     try:

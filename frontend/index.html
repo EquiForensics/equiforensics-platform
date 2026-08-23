@@ -49,10 +49,14 @@
             <button id="tab-dashboard" onclick="switchTab('dashboard')" class="hidden px-6 py-2.5 rounded-lg font-bold bg-efDark text-efGray hover:text-white border border-gray-800 transition">My Dashboard</button>
         </div>
 
-        <div id="search-section" class="hidden w-full max-w-4xl mx-auto mb-6">
+        <!-- Search Bar with Dynamic Filters -->
+        <div id="search-section" class="w-full max-w-4xl mx-auto mb-6">
             <div class="flex flex-col sm:flex-row gap-3">
                 <input type="text" id="search-input" placeholder="Search..." class="flex-1 bg-efDark text-white px-5 py-3.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-efYellow border border-gray-800">
                 
+                <!-- Secondary Filter (Location/Year/Discipline) -->
+                <input type="text" id="filter-location" placeholder="Filter by City/Country..." class="hidden bg-efDark text-white px-4 py-3.5 rounded-lg border border-gray-800 focus:outline-none focus:border-efYellow w-full sm:w-56">
+
                 <select id="year-filter" class="hidden bg-efDark text-white px-4 py-3.5 rounded-lg border border-gray-800 focus:outline-none focus:border-efYellow cursor-pointer">
                     <option value="2000">Any Time</option>
                     <option value="2023">Since 2023</option>
@@ -79,7 +83,6 @@
                     <input type="text" id="prof-city" placeholder="City, Country" class="bg-black text-white px-4 py-3 rounded border border-gray-700 w-full focus:border-efYellow outline-none">
                 </div>
 
-                <!-- NEW: PDF Upload Section -->
                 <div class="mb-4 p-4 border border-gray-800 rounded-lg bg-black">
                     <label class="block text-sm text-efGray mb-2 font-bold">Import CV / Resume (PDF):</label>
                     <p class="text-xs text-gray-500 mb-3">Upload your resume to automatically generate your bio.</p>
@@ -120,17 +123,6 @@
             <button onclick="handleSignup()" class="w-full bg-transparent text-efYellow border border-efYellow font-bold py-3 rounded-lg hover:bg-efYellow hover:text-black transition">Create Account</button>
             <p id="auth-message" class="text-center text-sm font-semibold mt-4 hidden"></p>
         </div>
-        <div class="mt-6 border-t border-gray-800 pt-4">
-    <p class="text-xs text-center text-efGray mb-3">Or continue with</p>
-    <div class="flex gap-3">
-        <button onclick="handleSocialLogin('google')" class="flex-1 bg-black text-white border border-gray-700 font-bold py-2.5 rounded-lg hover:bg-gray-900 transition text-sm flex items-center justify-center gap-2">
-            <span>Google</span>
-        </button>
-        <button onclick="handleSocialLogin('azure')" class="flex-1 bg-black text-white border border-gray-700 font-bold py-2.5 rounded-lg hover:bg-gray-900 transition text-sm flex items-center justify-center gap-2">
-            <span>Microsoft</span>
-        </button>
-    </div>
-</div>
     </div>
 
     <div id="video-modal" class="fixed inset-0 bg-black hidden flex-col z-50">

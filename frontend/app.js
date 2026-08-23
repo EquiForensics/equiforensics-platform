@@ -1,4 +1,3 @@
-// NOTE: Make sure this URL matches your live Render.com backend URL!
 const API_BASE = 'https://equiforensics-api.onrender.com'; 
 let dbClient = null;
 let currentUser = null;
@@ -14,7 +13,7 @@ async function initApp() {
         await checkSession();
         switchTab('experts');
     } catch (err) {
-        document.getElementById('results-grid').innerHTML = `<p class="text-red-400 text-center mt-10">Cannot connect to backend server. Ensure Docker is running.</p>`;
+        document.getElementById('results-grid').innerHTML = `<p class="text-red-400 text-center mt-10">Cannot connect to backend server.</p>`;
     }
 }
 
@@ -101,9 +100,12 @@ function switchTab(tab) {
     const dashboard = document.getElementById('dashboard-section');
     const yearFilter = document.getElementById('year-filter');
     const viewToggle = document.getElementById('view-toggle-btn');
+    const locationFilter = document.getElementById('filter-location');
     const searchInput = document.getElementById('search-input');
 
+    // Reset inputs
     searchInput.value = "";
+    locationFilter.value = "";
     yearFilter.value = "2000";
     grid.innerHTML = ""; 
     
@@ -118,20 +120,28 @@ function switchTab(tab) {
         grid.classList.remove('hidden');
         heroSection.classList.remove('hidden');
         
-        if (tab === 'papers') {
+        if (tab === 'experts') {
             searchSection.classList.remove('hidden');
+            locationFilter.classList.remove('hidden');
+            locationFilter.placeholder = "Filter by City/Country...";
+            yearFilter.classList.add('hidden');
+            viewToggle.classList.add('hidden');
+            searchInput.placeholder = "Search expert name or bio...";
+            runSearch();
+        } else if (tab === 'papers') {
+            searchSection.classList.remove('hidden');
+            locationFilter.classList.add('hidden');
             yearFilter.classList.remove('hidden');
             viewToggle.classList.remove('hidden');
             searchInput.placeholder = "Search methods, keywords, authors...";
             runSearch(); 
         } else if (tab === 'labs') {
             searchSection.classList.remove('hidden');
+            locationFilter.classList.remove('hidden');
+            locationFilter.placeholder = "Filter by City/Country...";
             yearFilter.classList.add('hidden');
             viewToggle.classList.add('hidden');
-            searchInput.placeholder = "Search labs by location or name...";
-            runSearch(); 
-        } else {
-            searchSection.classList.add('hidden');
+            searchInput.placeholder = "Search lab name...";
             runSearch(); 
         }
     }
@@ -139,6 +149,7 @@ function switchTab(tab) {
 
 async function runSearch() {
     const query = document.getElementById('search-input').value.trim() || "*";
+    const location = document.getElementById('filter-location').value.trim();
     const grid = document.getElementById('results-grid');
     grid.innerHTML = `<p class="text-efYellow text-center py-8 animate-pulse">Querying global infrastructure...</p>`;
 
@@ -146,11 +157,11 @@ async function runSearch() {
         let endpoint = '';
         if(currentTab === 'experts') {
             grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scrollable-container pr-2";
-            endpoint = `/search-experts`;
+            endpoint = `/search-experts?location=${encodeURIComponent(location)}`;
         }
         if(currentTab === 'labs') {
             grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scrollable-container pr-2";
-            endpoint = `/search-labs?query=${encodeURIComponent(query)}`;
+            endpoint = `/search-labs?query=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}`;
         }
         if(currentTab === 'papers') {
             const minYear = document.getElementById('year-filter').value;
@@ -183,7 +194,7 @@ function renderExperts(experts) {
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <h3 class="text-white font-bold text-lg">${exp.full_name || 'Anonymous Expert'}</h3>
-                        <p class="text-efYellow text-sm font-semibold">${exp.city || 'Global Network'}</p>
+                        <p class="text-efYellow text-sm font-semibold">📍 ${exp.city || 'Global Network'}</p>
                     </div>
                     <span class="bg-green-900/50 text-green-400 border border-green-800 text-[10px] uppercase font-bold px-2 py-1 rounded">Available</span>
                 </div>
@@ -281,7 +292,6 @@ async function loadDashboard() {
     }
 }
 
-// NEW: Upload to Storage & Extract Text
 async function uploadAndExtractPDF() {
     const fileInput = document.getElementById('pdf-upload');
     const msg = document.getElementById('pdf-msg');
@@ -290,27 +300,19 @@ async function uploadAndExtractPDF() {
     if (!fileInput.files[0]) return alert("Please select a PDF first.");
     const file = fileInput.files[0];
 
-    // UI Loading state
     btn.innerText = "Processing...";
     btn.disabled = true;
     msg.classList.add('hidden');
 
     try {
-        // 1. Upload to Supabase Storage 
         const fileExt = file.name.split('.').pop();
         const fileName = `${currentUser.id}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        
         await dbClient.storage.from('resumes').upload(fileName, file, { upsert: true });
 
-        // 2. Extract Text via FastAPI Backend
         const formData = new FormData();
         formData.append("file", file);
 
-        const res = await fetch(`${API_BASE}/extract-pdf-text`, {
-            method: 'POST',
-            body: formData
-        });
-        
+        const res = await fetch(`${API_BASE}/extract-pdf-text`, { method: 'POST', body: formData });
         const data = await res.json();
 
         if (data.status === 'success') {
@@ -333,7 +335,7 @@ async function saveProfile() {
     const msg = document.getElementById('prof-msg');
     const { error } = await dbClient.from('profiles').update({
         full_name: document.getElementById('prof-name').value,
-        city: document.getElementById('prof-city').value,
+        city: document.getElementById('prof-city'].value,
         bio: document.getElementById('prof-bio').value,
         is_available: document.getElementById('prof-available').checked
     }).eq('id', currentUser.id);
@@ -366,18 +368,6 @@ async function launchConsultation(expertId) {
 function endConsultation() {
     if (jitsiApi) { jitsiApi.dispose(); jitsiApi = null; }
     document.getElementById('video-modal').classList.remove('modal-active');
-}
-
-async function handleSocialLogin(provider) {
-    const { error } = await dbClient.auth.signInWithOAuth({
-        provider: provider,
-        options: {
-            redirectTo: window.location.origin // Automatically redirects back to your live site
-        }
-    });
-    if (error) {
-        showAuthMsg(error.message, "text-red-500");
-    }
 }
 
 window.onload = initApp;
