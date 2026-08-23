@@ -2,7 +2,6 @@ import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# 1. Load credentials (works both locally with .env and on GitHub Actions via Secrets)
 load_dotenv()
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
@@ -12,11 +11,10 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-# 2. Curated list of verified international accredited forensic labs & ENFSI members
-# (You can expand this list or connect it to an external public registry parser later)
+# Expanded global directory of accredited institutions
 GLOBAL_FORENSIC_LABS = [
     {
-        "lab_name": "Bundeskriminalkriminalamt (BKA) Forensic Science Institute",
+        "lab_name": "Bundeskriminalamt (BKA) Forensic Science Institute",
         "city": "Wiesbaden",
         "country": "Germany",
         "is_iso_17025": True,
@@ -54,6 +52,30 @@ GLOBAL_FORENSIC_LABS = [
         "is_iso_17025": True,
         "forensic_disciplines": ["DNA Profiling", "Bloodstain Pattern Analysis"],
         "is_enfsi_member": True
+    },
+    {
+        "lab_name": "Netherlands Forensic Institute (NFI)",
+        "city": "The Hague",
+        "country": "Netherlands",
+        "is_iso_17025": True,
+        "forensic_disciplines": ["DNA Profiling", "Digital Forensics", "Pathology"],
+        "is_enfsi_member": True
+    },
+    {
+        "lab_name": "Federal Bureau of Investigation (FBI) Laboratory",
+        "city": "Quantico, VA",
+        "country": "USA",
+        "is_iso_17025": True,
+        "forensic_disciplines": ["DNA Profiling", "Chemistry", "Trace Evidence", "Biometrics"],
+        "is_enfsi_member": False
+    },
+    {
+        "lab_name": "Victoria Police Forensic Services Department",
+        "city": "Melbourne",
+        "country": "Australia",
+        "is_iso_17025": True,
+        "forensic_disciplines": ["Chemical Analysis", "Ballistics", "Crime Scene Reconstruction"],
+        "is_enfsi_member": False
     }
 ]
 
@@ -62,14 +84,12 @@ def ingest_labs():
     
     for lab in GLOBAL_FORENSIC_LABS:
         try:
-            # Check if lab already exists by name to avoid duplicates
             existing = supabase.table("labs").select("id").eq("lab_name", lab["lab_name"]).execute()
             
             if existing.data and len(existing.data) > 0:
                 print(f"[i] Lab already exists, skipping: {lab['lab_name']}")
             else:
-                # Insert new lab into Supabase using Admin Privileges
-                response = supabase.table("labs").insert(lab).execute()
+                supabase.table("labs").insert(lab).execute()
                 print(f"[+] Successfully ingested lab: {lab['lab_name']} ({lab['country']})")
                 
         except Exception as e:

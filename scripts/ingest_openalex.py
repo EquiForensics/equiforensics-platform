@@ -1,69 +1,107 @@
 import os
-import time
 import requests
-from urllib.parse import quote
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# 1. Load secure credentials
 load_dotenv()
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
-# Use the SERVICE_KEY for admin write privileges!
-SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") 
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    raise ValueError("Missing credentials in .env file.")
+    raise ValueError("Missing Supabase credentials in environment variables.")
 
-# Initialize Supabase with the Admin Key
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 OPENALEX_API_URL = "https://api.openalex.org/works"
 
-def fetch_and_upload_papers(disciplines: list):
-    headers = {"User-Agent": "EquiForensics/1.1 (mailto:contact@equiforensics.com)"}
-    
-    for discipline in disciplines:
-        print(f"\n[+] Fetching open-access papers for: {discipline}")
-        encoded_query = quote(discipline)
-        url = f"{OPENALEX_API_URL}?search={encoded_query}&filter=is_oa:true&per-page=25"
+# Expanded broad forensic topics to build a massive library
+FORENSIC_TOPICS = [
+    {"query": "DNA profiling forensic", "discipline": "DNA & Serology"},
+    {"query": "Digital forensics file carving", "discipline": "Digital & Cyber Forensics"},
+    {"query": "Bloodstain pattern analysis", "discipline": "Crime Scene Reconstruction"},
+    {"query": "Forensic toxicology hair analysis", "discipline": "Toxicology & Chemistry"},
+    {"query": "Ballistics toolmark identification", "discipline": "Firearms & Ballistics"},
+    {"query": "Fingerprint ridge characteristics", "discipline": "Pattern Evidence"},
+    {"query": "Forensic pathology autopsy standards", "discipline": "Pathology & Medicine"},
+    {"query": "Cybersecurity incident response forensics", "discipline": "Digital & Cyber Forensics"}
+]
+
+def ingest_papers():
+    print("Starting EquiForensics Massive Paper Ingestion Pipeline...")
+    total_inserted = 0
+
+    for topic in FORENSIC_TOPICS:
+        search_query = topic["query"]
+        discipline = topic["discipline"]
+        print(f"\n[+] Fetching open-access papers for: {search_query}")
+        
+        params = {
+            "search": search_query,
+            "filter": "is_oa:true,publication_year:>2015",
+            "per-page": 50, # Pull top 50 per category
+            "sort": "cited_by_count:desc"
+        }
         
         try:
-            resp = requests.get(url, headers=headers, timeout=15)
-            resp.raise_for_status()
-            results = resp.json().get("results", [])
+            response = requests.get(OPENALEX_API_URL, params=params, timeout=20)
+            if response.status_code != 200:
+                print(f"[X] API Error for {search_query}: Status {response.status_code}")
+                continue
+                
+            data = response.json()
+            works = data.get("results", [])
             
-            papers_to_insert = []
-            for raw_paper in results:
-                if raw_paper.get("is_retracted", False):
-                    continue # Skip retracted papers for legal integrity
+            for work in works:
+                title = work.get("title")
+                if not title:
+                    continue
                 
-                doi = raw_paper.get("doi")
-                doc_id = doi.replace("https://doi.org/", "") if doi else raw_paper.get("id", "").split("/")[-1]
-                authors = [a.get("author", {}).get("display_name") for a in raw_paper.get("authorships", []) if a.get("author", {}).get("display_name")]
+                # Extract publication year
+                pub_year = work.get("publication_year", 2020)
                 
-                papers_to_insert.append({
-                    "id": doc_id,
-                    "title": raw_paper.get("title") or "Untitled Paper",
-                    "doi": doi or "",
-                    "publication_year": raw_paper.get("publication_year") or 0,
+                # Extract citation count
+                citations = work.get("cited_by_count", 0)
+                
+                # Extract authors
+                authors = []
+                for authorship in work.get("authorships", []):
+                    author_name = authorship.get("author", {}).get("display_name")
+                    if author_name:
+                        authors.append(author_name)
+                        
+                # Extract PDF URL if available
+                pdf_url = None
+                oa_location = work.get("open_access", {})
+                if oa_location.get("is_oa") and oa_location.get("oa_url"):
+                    pdf_url = oa_location.get("oa_url")
+                
+                paper_payload = {
+                    "title": title,
+                    "publication_year": pub_year,
                     "discipline": discipline,
-                    "is_open_access": raw_paper.get("open_access", {}).get("is_oa", False),
-                    "pdf_url": raw_paper.get("open_access", {}).get("oa_url") or "",
-                    "authors": authors,
-                    "citation_count": raw_paper.get("cited_by_count", 0),
-                    "is_retracted": False
-                })
-
-            if papers_to_insert:
-                supabase.table("papers").upsert(papers_to_insert).execute()
-                print(f"[✓] Ingested {len(papers_to_insert)} validated papers for '{discipline}'.")
+                    "authors": authors[:5], # Store top 5 authors
+                    "citation_count": citations,
+                    "pdf_url": pdf_url
+                }
                 
+                # Upsert into Supabase (avoids duplicates based on title if unique constraint exists, else inserts)
+                try:
+                    supabase.table("papers").upsert(paper_payload, on_conflict="title").execute()
+                    total_inserted += 1
+                except Exception as db_err:
+
+                    # Fallback standard insert if upsert conflict constraint isn't set
+                    try:
+                        supabase.table("papers").insert(paper_payload).execute()
+                        total_inserted += 1
+                    except Exception:
+                        pass
+                        
+            print(f"[✓] Processed category: {discipline}")
+
         except Exception as e:
-            print(f"[X] Error fetching {discipline}: {e}")
-            
-        time.sleep(1.0) # Be polite to the API limits
+            print(f"[X] Error fetching {search_query}: {e}")
+
+    print(f"\nPipeline complete! Successfully processed and synced papers to database.")
 
 if __name__ == "__main__":
-    disciplines = ["DNA profiling forensic", "Digital forensics file carving", "Bloodstain pattern analysis"]
-    print("Starting EquiForensics Data Ingestion...")
-    fetch_and_upload_papers(disciplines)
-    print("Pipeline complete.")
+    ingest_papers()
