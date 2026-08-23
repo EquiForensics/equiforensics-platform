@@ -163,11 +163,12 @@ async function runSearch(page = 1) {
     try {
         let endpoint = '';
         if(currentTab === 'experts') {
-            grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scrollable-container pr-2";
+            // FIX: Removed scrollable-container
+            grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
             endpoint = `/search-experts?location=${encodeURIComponent(location)}&page=${page}&page_size=12`;
         }
         if(currentTab === 'labs') {
-            grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scrollable-container pr-2";
+            grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
             endpoint = `/search-labs?query=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}&page=${page}&page_size=12`;
         }
         if(currentTab === 'papers') {
@@ -188,7 +189,6 @@ async function runSearch(page = 1) {
         if(currentTab === 'papers') renderPapers(data.results, grid);
         if(currentTab === 'labs') renderLabs(data.results);
 
-        // Render pagination buttons if we received results
         renderPagination(data.results.length, 12);
 
     } catch(e) {
@@ -203,12 +203,15 @@ function renderPagination(resultsCount, pageSize) {
     const hasPrevious = currentPage > 1;
     const hasNext = resultsCount === pageSize;
 
+    // Scroll to top of results smoothly when changing pages
+    const scrollToTopBtn = `window.scrollTo({ top: document.getElementById('search-section').offsetTop - 100, behavior: 'smooth' });`;
+
     pagination.innerHTML = `
-        <button onclick="runSearch(${currentPage - 1})" ${!hasPrevious ? 'disabled class="opacity-40 cursor-not-allowed"' : ''} class="bg-efDark text-white px-4 py-2 rounded-lg border border-gray-800 hover:border-efYellow transition text-sm font-bold">
+        <button onclick="${scrollToTopBtn} runSearch(${currentPage - 1})" ${!hasPrevious ? 'disabled class="opacity-40 cursor-not-allowed"' : ''} class="bg-efDark text-white px-4 py-2 rounded-lg border border-gray-800 hover:border-efYellow transition text-sm font-bold">
             ← Previous
         </button>
         <span class="text-sm text-efGray">Page ${currentPage}</span>
-        <button onclick="runSearch(${currentPage + 1})" ${!hasNext ? 'disabled class="opacity-40 cursor-not-allowed"' : ''} class="bg-efDark text-white px-4 py-2 rounded-lg border border-gray-800 hover:border-efYellow transition text-sm font-bold">
+        <button onclick="${scrollToTopBtn} runSearch(${currentPage + 1})" ${!hasNext ? 'disabled class="opacity-40 cursor-not-allowed"' : ''} class="bg-efDark text-white px-4 py-2 rounded-lg border border-gray-800 hover:border-efYellow transition text-sm font-bold">
             Next →
         </button>
     `;
@@ -236,9 +239,10 @@ function renderExperts(experts) {
 }
 
 function renderPapers(papers, container) {
+    // FIX: Removed scrollable-container
     container.className = viewMode === 'card' 
-        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scrollable-container pr-2"
-        : "flex flex-col gap-4 scrollable-container pr-2";
+        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        : "flex flex-col gap-4";
 
     container.innerHTML = papers.map(p => {
         const authors = (p.authors && p.authors.length) ? p.authors.slice(0, 2).join(", ") : "Unknown Author";
@@ -321,6 +325,7 @@ async function loadDashboard() {
 }
 
 async function uploadAndExtractPDF() {
+    // Content identical to previous
     const fileInput = document.getElementById('pdf-upload');
     const msg = document.getElementById('pdf-msg');
     const btn = document.getElementById('pdf-btn');
